@@ -1,48 +1,34 @@
 package user.dao;
 
-import core.jdbc.ConnectionManager;
-import org.slf4j.Logger;
+import core.jdbc.CrudTemplate;
 import user.domain.User;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.slf4j.LoggerFactory.getLogger;
 
 public class UserDao {
 
-    private static final Logger logger = getLogger(UserDao.class);
+    private CrudTemplate<User> crudTemplate;
 
-    public void  insert(User user) throws SQLException {
-        String sql = "INSERT INTO USERS VALUES (?, ?, ?, ?)";
-        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(sql)) {
-            pstmt.setString(1, user.getUserId());
-            pstmt.setString(2, user.getPassword());
-            pstmt.setString(3, user.getName());
-            pstmt.setString(4, user.getEmail());
-
-            pstmt.executeUpdate();
-        }
+    public UserDao() {
+        crudTemplate = new CrudTemplate<>();
     }
 
-    public void update(User user) throws SQLException {
-        String sql = "UPDATE USERS SET userId = ?, password = ?, name = ?, email = ? WHERE userId = ?";
-        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(sql)) {
-            pstmt.setString(1, user.getUserId());
-            pstmt.setString(2, user.getPassword());
-            pstmt.setString(3, user.getName());
-            pstmt.setString(4, user.getEmail());
-            pstmt.setString(5, user.getUserId()); // WHERE
-
-            pstmt.executeUpdate();
-        }
+    public void insert(User user) throws IllegalAccessException, SQLException, InvocationTargetException {
+        String query = "INSERT INTO USERS VALUES (?, ?, ?, ?)";
+        crudTemplate.setObject(user).execute(query);
     }
 
-    public List<User> findAll() throws SQLException {
+    public void update(User user) throws IllegalAccessException, SQLException, InvocationTargetException {
+        String query = "UPDATE USERS SET password = ?, name = ?, email = ? WHERE userId = ?";
+        crudTemplate.setObject(user).execute(query);
+    }
+
+    /*public User queryForObject(String key) throws SQLException {
+        String query ="SELECT * FROM USERS WHERE userId = ?";
+        return crudTemplate.queryForObject(query, key);
+    }*/
+
+    /*public List<User> findAll() throws SQLException {
         List<User> users = new ArrayList<>();
         String sql = "SELECT * FROM USERS";
         ResultSet rs = null;
@@ -78,6 +64,6 @@ public class UserDao {
         } finally {
             rs.close();
         }
-    }
+    }*/
 }
 
