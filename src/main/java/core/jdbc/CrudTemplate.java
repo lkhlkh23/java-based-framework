@@ -49,7 +49,6 @@ public class CrudTemplate <T> implements JdbcTemplate {
             Method method = this.object.getClass().getDeclaredMethod(StringConverter.createMethod("get", params.get(i - 1)), null);
             setValue(pstmt, i, (String)method.invoke(this.object));
         }
-        System.out.println(pstmt.toString()+"~~");
     }
 
     @Override
@@ -60,14 +59,8 @@ public class CrudTemplate <T> implements JdbcTemplate {
     @Override
     public List<T> query(String query) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException {
         List<T> results = new ArrayList<>();
-        ResultSet rs = null;
         try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
-            rs = pstmt.executeQuery();
-            while(rs.next()) {
-                results.add(mapRow(rs));
-            }
-        } finally {
-            rs.close();
+            results.add(mapRow(pstmt.executeQuery()));
         }
         return results;
     }
@@ -76,8 +69,10 @@ public class CrudTemplate <T> implements JdbcTemplate {
     public T mapRow(ResultSet rs) throws IllegalAccessException, InstantiationException, SQLException, InvocationTargetException {
         T obj = (T) object.getClass().newInstance();
         List<Method> methods = obtainMethod("set");
-        for (Method method : methods) {
-            method.invoke(obj, rs.getString(StringConverter.extractMethodName(method.getName())));
+        while(rs.next()) {
+            for (Method method : methods) {
+                method.invoke(obj, rs.getString(StringConverter.extractMethodName(method.getName())));
+            }
         }
 
         return obj;
@@ -86,13 +81,9 @@ public class CrudTemplate <T> implements JdbcTemplate {
     @Override
     public T queryForObject(String query, String key) throws SQLException, IllegalAccessException
             , InvocationTargetException, InstantiationException, NoSuchMethodException {
-        ResultSet rs = null;
         try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
             setValue(pstmt, 1, key);
-            rs = pstmt.executeQuery();
-            return mapRow(rs);
-        } finally {
-            rs.close();
+            return mapRow(pstmt.executeQuery());
         }
     }
 
