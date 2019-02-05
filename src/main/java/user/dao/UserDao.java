@@ -13,13 +13,13 @@ public class UserDao {
         crudTemplate = new CrudTemplate<>();
     }
 
-    public void insert(User user) throws IllegalAccessException, SQLException, InvocationTargetException {
-        String query = "INSERT INTO USERS VALUES (?, ?, ?, ?)";
+    public void insert(User user) throws IllegalAccessException, SQLException, InvocationTargetException, NoSuchMethodException {
+        String query = "INSERT INTO USERS (name, email, userId, password) VALUES (?, ?, ?, ?)";
         crudTemplate.setObject(user).execute(query);
     }
 
-    public void update(User user) throws IllegalAccessException, SQLException, InvocationTargetException {
-        String query = "UPDATE USERS SET password = ?, name = ?, email = ? WHERE userId = ?";
+    public void update(User user) throws IllegalAccessException, SQLException, InvocationTargetException, NoSuchMethodException {
+        String query = "UPDATE USERS SET name = ?, email = ?, password = ?WHERE userId = ?";
         crudTemplate.setObject(user).execute(query);
     }
 

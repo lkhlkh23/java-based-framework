@@ -29,14 +29,7 @@ public class ConnectionManager {
         return dataSource;
     }
 
-    public static Connection getConnection() {
-        try {
-            if(connection == null) {
-                connection = getDataSource().getConnection();
-            }
-        } catch (SQLException e) {
-            throw new IllegalStateException(e);
-        }
-        return connection;
+    public static Connection getConnection() throws SQLException {
+        return connection = getDataSource().getConnection();
     }
 }
