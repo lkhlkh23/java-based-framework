@@ -8,15 +8,10 @@ import java.util.List;
 
 public interface JdbcTemplate <T> {
 
-    void execute(String query) throws SQLException, InvocationTargetException, IllegalAccessException, NoSuchMethodException;
+    void execute(String query) throws DataAccessException;
 
-    void setValue(PreparedStatement pstmt, int seq, String value) throws SQLException;
+    T queryForObject(String query, String key) throws DataAccessException;
 
-    void setValues(PreparedStatement pstmt, String query) throws InvocationTargetException, IllegalAccessException, SQLException, NoSuchMethodException;
+    List<T> query(String query) throws DataAccessException;
 
-    T queryForObject(String query, String key) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException;
-
-    T mapRow(ResultSet rs) throws IllegalAccessException, InstantiationException, SQLException, InvocationTargetException;
-
-    List<T> query(String query) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException;
 }

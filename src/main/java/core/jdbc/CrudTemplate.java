@@ -1,6 +1,7 @@
 package core.jdbc;
 
 import org.slf4j.Logger;
+import util.ReflectionUtil;
 import util.StringConverter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -17,7 +18,7 @@ import java.util.stream.Stream;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class CrudTemplate <T> implements JdbcTemplate {
+public class CrudTemplate <T> implements JdbcTemplate, RowMapper, PreparedStatementSetter {
 
     private static final Logger logger = getLogger(CrudTemplate.class);
 
@@ -32,18 +33,43 @@ public class CrudTemplate <T> implements JdbcTemplate {
         return this;
     }
 
+    /* insert, update */
     @Override
-    public void execute(String query) throws SQLException, InvocationTargetException, IllegalAccessException, NoSuchMethodException {
-        logger.debug("Call Method execute()");
+    public void execute(String query) throws DataAccessException {
         try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)) {
             setValues(pstmt, query);
             pstmt.executeUpdate();
+        } catch (Exception e) {
+            throw new DataAccessException(e.getMessage());
         }
     }
 
+    /* select all */
     @Override
-    public void setValues(PreparedStatement pstmt, String query) throws InvocationTargetException, IllegalAccessException, SQLException, NoSuchMethodException {
-        logger.debug("Call Method setValue()");
+    public List<T> query(String query) throws DataAccessException {
+        List<T> results = new ArrayList<>();
+        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
+            results.add(mapRow(pstmt.executeQuery()));
+        } catch (Exception e) {
+            throw new DataAccessException(e.getMessage());
+        }
+        return results;
+    }
+
+    @Override
+    public T queryForObject(String query, String key) throws DataAccessException {
+        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
+            setValue(pstmt, 1, key);
+            return mapRow(pstmt.executeQuery());
+        } catch (Exception e) {
+            throw new DataAccessException(e.getMessage());
+        }
+    }
+
+    /* insert, update */
+    @Override
+    public void setValues(PreparedStatement pstmt, String query)
+            throws InvocationTargetException, IllegalAccessException, SQLException, NoSuchMethodException {
         List<String> params = obtainMappingValue(query);
         for(int i = 1; i <= params.size(); i++) {
             Method method = this.object.getClass().getDeclaredMethod(StringConverter.createMethod("get", params.get(i - 1)), null);
@@ -51,48 +77,26 @@ public class CrudTemplate <T> implements JdbcTemplate {
         }
     }
 
+    /* insert, update, select */
     @Override
     public void setValue(PreparedStatement pstmt, int seq, String value) throws SQLException {
         pstmt.setString(seq, value);
     }
 
+    /* select all, select */
     @Override
-    public List<T> query(String query) throws SQLException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        List<T> results = new ArrayList<>();
-        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
-            results.add(mapRow(pstmt.executeQuery()));
-        }
-        return results;
-    }
-
-    @Override
-    public T mapRow(ResultSet rs) throws IllegalAccessException, InstantiationException, SQLException, InvocationTargetException {
-        T obj = (T) object.getClass().newInstance();
-        List<Method> methods = obtainMethod("set");
+    public T mapRow(ResultSet rs) throws InvocationTargetException, IllegalAccessException, SQLException {
+        List<Method> methods = ReflectionUtil.obtainMethod("set", object);
         while(rs.next()) {
             for (Method method : methods) {
-                method.invoke(obj, rs.getString(StringConverter.extractMethodName(method.getName())));
+                method.invoke(object, rs.getString(StringConverter.extractMethodName(method.getName())));
             }
         }
 
-        return obj;
+        return object;
     }
 
-    @Override
-    public T queryForObject(String query, String key) throws SQLException, IllegalAccessException
-            , InvocationTargetException, InstantiationException, NoSuchMethodException {
-        try (Connection con = ConnectionManager.getConnection(); PreparedStatement pstmt = con.prepareStatement(query)){
-            setValue(pstmt, 1, key);
-            return mapRow(pstmt.executeQuery());
-        }
-    }
-
-    public List<Method> obtainMethod(String startWith) {
-        return Stream.of(object.getClass().getDeclaredMethods())
-                .filter(m -> m.getName().startsWith(startWith))
-                .collect(Collectors.toList());
-    }
-
+    /* select update */
     public List<String> obtainMappingValue(String query) {
         /* UPDATE 경우에만 가능 */
         if(query.startsWith("UPDATE")) {
@@ -108,6 +112,5 @@ public class CrudTemplate <T> implements JdbcTemplate {
 
         return Stream.of(query.split("VALUES")[0].split("\\(")[1].split("\\)")[0].split(","))
                 .map(p -> p.trim()).collect(Collectors.toList());
-
     }
 }
